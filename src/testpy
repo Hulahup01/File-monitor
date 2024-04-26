@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ "$1" == "init" ]; then
+    python3 $(dirname "$0")/main.py "$(pwd)"
+    echo "main.py запущен"
+else
+    echo "Неверная команда. Введите 'init' после имени скрипта."
+fi
