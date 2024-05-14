@@ -1,0 +1,22 @@
+#!/bin/bash
+
+if [ "$1" == "init" ]; then
+    fsms_root_dir="$(dirname "$0")"
+    fsms_dir="$(pwd)/.fsms"
+    #python3 "$fsms_root_dir/main.py" "stop"
+    if [ -d ".fsms" ]; then
+        echo "Error: The current folder is already being tracked"
+        exit 1
+    fi
+
+    mkdir "$fsms_dir"
+    cp "$(dirname "$0")/watcher.ini" "$fsms_dir"
+    sed -i "s#watch =.*#watch = $(pwd)#" "$fsms_dir/watcher.ini"
+    nano "$fsms_dir/watcher.ini"
+    python3 "$fsms_root_dir/main.py" "start"
+    echo "SUCCESS"
+else
+    echo "The wrong command"
+    echo "[help] 1.Enter the 'init' option. 2.Configure the configuration file"
+    exit 1
+fi
