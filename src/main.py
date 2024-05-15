@@ -1,118 +1,75 @@
 import time
 import sys
-import os
 import getpass
 import logging
-from daemon import Daemon
+import os
+import hashlib
+import subprocess
 import configparser
 from watchdog.observers import Observer
-from watchdog.events import PatternMatchingEventHandler
+from daemon import Daemon
+from eventHandler import LoggingEventHandler
 
 
-class LoggingEventHandler(PatternMatchingEventHandler):
-    """Logs all the events captured."""
+class FSMSDaemon(Daemon):
 
-    def __init__(self):
-        super(LoggingEventHandler, self).__init__(ignore_patterns=['*/_fileMonitoring.log'])
-        if True:
-            delattr(self, 'on_created')
-
-    def on_moved(self, event):
-        super(LoggingEventHandler, self).on_moved(event)
-
-        what = 'directory' if event.is_directory else 'file'
-        logging.info("Moved %s: from %s to %s", what, event.src_path,
-                     event.dest_path)
-
-    def on_created(self, event):
-        super(LoggingEventHandler, self).on_created(event)
-
-        what = 'directory' if event.is_directory else 'file'
-        logging.info("Created %s: %s", what, event.src_path)
-
-    def on_deleted(self, event):
-        super(LoggingEventHandler, self).on_deleted(event)
-
-        what = 'directory' if event.is_directory else 'file'
-        logging.info("Deleted %s: %s", what, event.src_path)
-
-    def on_modified(self, event):
-        super(LoggingEventHandler, self).on_modified(event)
-
-        what = 'directory' if event.is_directory else 'file'
-        logging.info("Modified %s: %s", what, event.src_path)
-
-    def on_opened(self, event):
-        super(LoggingEventHandler, self).on_opened(event)
-
-        what = 'directory' if event.is_directory else 'file'
-        logging.info("Opened %s: %s", what, event.src_path)
-
-    def on_closed(self, event):
-        super(LoggingEventHandler, self).on_closed(event)
-
-        what = 'directory' if event.is_directory else 'file'
-        logging.info("Closed %s: %s", what, event.src_path)
-
-class MyDaemon(Daemon):
-
-    def __init__(self, pid, path):
-        super().__init__(pid, stdin='/dev/stdin', stdout='/dev/stdout', stderr='/dev/stderr')
-        self.path  = path
+    def __init__(self, pidfile, main_path):
+        super().__init__(pidfile, stdin='/dev/stdin', stdout='/dev/stdout', stderr='/dev/stderr')
+        self.main_path = main_path
+        self.fsms_path = main_path + '/.fsms'
+        self.config_path = self.fsms_path + '/watcher.ini'
+        self.log_path = self.fsms_path + '/_fileMonitoring.log'
+        self.config = configparser.ConfigParser()
 
     def run(self):
-        event_handler = LoggingEventHandler()    
+       
+        if(not self.config.read(self.config_path)):
+            sys.stderr.write('Error: Failed to read config file.')
+            sys.exit(4)
+
+        user = getpass.getuser()
+        logging.basicConfig(filename=self.log_path, filemode='a', level=logging.INFO,
+                            format=f'USER: {user}' + ' | ' + '%(asctime)s | %(process)d | %(message)s',
+                            datefmt='%Y-%m-%d %H:%M:%S')
+
+        event_handler = LoggingEventHandler(ignore_pattern=['*/.fsms/*'])    
         observer = Observer()
-        observer.schedule(event_handler, self.path, recursive=True)  
-        observer.start() 
-        try:
-            while True:
-                time.sleep(0.1)
-        except KeyboardInterrupt:
-            observer.stop()
-            observer.join()
+        observer.schedule(event_handler, self.main_path, recursive=True)  
+        observer.start()
+        
+        while observer.is_alive():
+            time.sleep(1)
+            if not os.path.exists(self.fsms_path):
+                observer.stop()
+                self.stop()
+                exit(0)
  
 
 
 if __name__ == '__main__':
-    config = configparser.ConfigParser()
-    if(not config.read('.fsms/watcher.ini')):
-        sys.stderr.write('Error: Failed to read config file.')
-        sys.exit(4)
+    main_path = sys.argv[1] if len(sys.argv) > 1 else None
+    if main_path is None:
+        raise ValueError('Error: Path argument is missing.')
 
-    path = config.get('SETUP', 'watch')
+    pidfile_path = f'/tmp/deamon_pid_{hashlib.sha256(main_path.encode()).hexdigest()}.pid'
 
-    user = getpass.getuser()
-    logging.basicConfig(filename='.fsms/_fileMonitoring.log', filemode='a', level=logging.INFO,
-                        format=f'USER: {user}' + ' | ' + '%(asctime)s | %(process)d | %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S')  
+    daemon = FSMSDaemon(pidfile_path, main_path)
 
-
-    daemon = MyDaemon('/tmp/daemon-example.pid', path)
-    if len(sys.argv) == 2:
-        if 'start' == sys.argv[1]:
-                daemon.start()
-        elif 'stop' == sys.argv[1]:
-                daemon.stop()
-        elif 'restart' == sys.argv[1]:
-                daemon.restart()
+    if len(sys.argv) == 3:
+        if 'start' == sys.argv[2]:
+            daemon.start()
+        elif 'stop' == sys.argv[2]:
+            daemon.stop()
+        elif 'restart' == sys.argv[2]:
+            daemon.restart()
+        elif 'status' == sys.argv[2]:
+            daemon.status()
+        elif 'debug' == sys.argv[2]: # option for debugging
+            daemon.run()
         else:
             print("Unknown command")
             sys.exit(2)
         sys.exit(0)
     else:
-        print("usage: %s start|stop|restart" % sys.argv[0])
+        print("Uage: %s path start|stop|restart|status|debug" % sys.argv[0])
         sys.exit(2)  
-
-    # event_handler = LoggingEventHandler()    
-    # observer = Observer()
-    # observer.schedule(event_handler, path, recursive=True)  
-    # observer.start() 
-
-
-    # try:
-    #     while True:
-    #         time.sleep(0.1)
-    # except KeyboardInterrupt:
-    #     observer.stop()
-    #     observer.join()
