@@ -43,7 +43,6 @@ class FSMSDaemon(Daemon):
             self.exclude = self.config.get('SETUP', 'excluded').strip().split(',')
             self.exclude = [el.strip() for el in self.exclude]
             self.exclude = [item for item in self.exclude if item]
-            print(self.exclude)
         except:
             sys.stderr.write('Error: incorrect option "excluded"\n')
             sys.exit(1)

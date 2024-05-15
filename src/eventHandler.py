@@ -7,7 +7,6 @@ class LoggingEventHandler(PatternMatchingEventHandler):
 
     def __init__(self, ignore_pattern=[], **kwargs):
         super(LoggingEventHandler, self).__init__(ignore_patterns=ignore_pattern)
-        print(f'ign: {ignore_pattern}')
         all = kwargs.get('all', False)
         self.on_moved_opt = kwargs.get('move', False ^ all)
         self.on_created_opt = kwargs.get('create', False ^ all)
