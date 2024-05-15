@@ -14,28 +14,22 @@ if [ "$1" == "init" ]; then
     sed -i "s#watch =.*#watch = $(pwd)#" "$fsms_dir/watcher.ini"
     nano "$fsms_dir/watcher.ini"
     python3 "$fsms_root_dir/main.py" $(pwd) "start"
-    echo "--------"
 elif [ "$1" == "start" ]; then
     echo "-=STARTED=-"
     python3 "$fsms_root_dir/main.py" $(pwd) "start"
-    echo "-----------"
 elif [ "$1" == "stop" ]; then
     echo "-=STOPED=-"
     python3 "$fsms_root_dir/main.py" $(pwd) "stop"
-    echo "----------"
 elif [ "$1" == "status" ]; then
     echo "-=STATUS=-"
     python3 "$fsms_root_dir/main.py" $(pwd) "status"
-    echo "----------"
 elif [ "$1" == "restart" ]; then
     echo "-=RESTART=-"
     python3 "$fsms_root_dir/main.py" $(pwd) "restart"
-    echo "-----------"
 elif [ "$1" == "clear" ]; then
     echo "-=CLEARING=-"
     python3 "$fsms_root_dir/main.py" $(pwd) "stop"
     rm -r $fsms_dir
-    echo "------------"
 else
     echo "The wrong command"
     echo "[help] 1.Enter the 'init' option. 2.Configure the configuration file"

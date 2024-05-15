@@ -5,16 +5,16 @@ from watchdog.events import PatternMatchingEventHandler
 class LoggingEventHandler(PatternMatchingEventHandler):
     """Logs all the events captured."""
 
-    def __init__(self, ignore_pattern=[],
-                 on_moved=True,on_created=True,on_deleted=True,
-                 on_modified=True, on_opened=True, on_closed=True):
+    def __init__(self, ignore_pattern=[], **kwargs):
         super(LoggingEventHandler, self).__init__(ignore_patterns=ignore_pattern)
-        self.on_moved_opt = on_moved
-        self.on_created_opt = on_created
-        self.on_deleted_opt = on_deleted
-        self.on_modified_opt = on_modified
-        self.on_opened_opt = on_opened
-        self.on_closed_opt = on_closed
+        print(f'ign: {ignore_pattern}')
+        all = kwargs.get('all', False)
+        self.on_moved_opt = kwargs.get('move', False ^ all)
+        self.on_created_opt = kwargs.get('create', False ^ all)
+        self.on_deleted_opt = kwargs.get('delete', False ^ all)
+        self.on_modified_opt = kwargs.get('modify', False ^ all)
+        self.on_opened_opt = kwargs.get('open', False ^ all)
+        self.on_closed_opt = kwargs.get('close', False ^ all)
 
     def on_moved(self, event):
         if self.on_moved_opt:
@@ -47,7 +47,7 @@ class LoggingEventHandler(PatternMatchingEventHandler):
                 logging.info("Modified %s: %s", what, event.src_path)
 
     def on_opened(self, event):
-        if self.on_opened:
+        if self.on_opened_opt:
             super(LoggingEventHandler, self).on_opened(event)
 
             what = 'directory' if event.is_directory else 'file'
